@@ -1,0 +1,177 @@
+
+
+
+CODE
+#include <16F876A.h>
+#device adc=8
+#FUSES NOWDT                    //No Watch Dog Timer
+#FUSES XT                            //Crystal osc <= 4mhz
+#FUSES NOPUT                    //No Power Up Timer
+#FUSES NOPROTECT                //Code not protected from reading
+#FUSES NODEBUG                  //No Debug mode for ICD
+#FUSES NOBROWNOUT               //No brownout reset
+#FUSES NOLVP                    //No low voltage prgming, B3(PIC16) or B5(PIC18) used for I/O
+#FUSES NOCPD                    //No EE protection
+#FUSES WRT_50%                  //Lower half of Program Memory is Write Protected
+#use delay(clock=4000000)
+#use rs232(baud=9600,parity=N,xmit=PIN_C4,rcv=PIN_C5,bits=8,stream=gsm)
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+CODE
+#include <16F877A.h>
+#device adc=8
+#FUSES NOWDT                    //No Watch Dog Timer
+#FUSES XT                       //Crystal osc <= 4mhz
+#FUSES NOPUT                    //No Power Up Timer
+#FUSES NOPROTECT                //Code not protected from reading
+#FUSES NODEBUG                  //No Debug mode for ICD
+#FUSES NOBROWNOUT               //No brownout reset
+#FUSES NOLVP                //No low voltage prgming, B3(PIC16) or B5(PIC18) used for I/O
+#FUSES NOCPD                    //No EE protection
+#FUSES WRT_50%                  //Lower half of Program Memory is Write Protected
+#use delay(clock=4000000)
+#use rs232(baud=9600,parity=N,xmit=PIN_C4,rcv=PIN_C5,bits=8,stream=gsm)
+int i,j,f=0,flag1=0;
+char a,x;
+char str[70]="SECURITY ALERT...MAIN GATE HAS BEEN LOCKED! SEND <*ULK*> to unlock";
+const char m0[4]  = "AT\r";
+const char m1[11] = "AT+CMGF=1\r";
+const char m2[22] = "AT+CMGS=\"9496084923\"\r";
+const char m3[11] = "AT+CMGR=1\r";
+const char m4[11] = "AT+CMGD=1\r";
+const char m5[13] = "ATD9037474098\r";
+char str1[5], str2[5] = �ULK�;
+void receive();
+void msg();
+void call();
+short timeout_error;
+char timed_getc()
+ {
+   long timeout;
+   timeout_error = FALSE;
+   timeout = 0;
+   while(!kbhit()&&(++timeout<5000))
+   delay_us(10);
+   if(kbhit(gsm))
+   return(fgetc(gsm));
+   else
+    {
+     timeout_error = TRUE;
+     return(0);
+    }
+ }
+///////////////////////////////////////////////////////  call   /////////////////////////////////////////////////////////////////////
+void call()
+  {
+   for(i=0;i<14;i++)
+   {
+   fputc(m5[i],gsm);
+   a=timed_getc();
+   }
+   a=timed_getc();
+   a=timed_getc();
+  }
+////////////////////////////////////////////////////////////        msg sending         ////////////////////////////////////////
+void msg()   
+ {
+  for(i=0;i<3;i++)
+   {
+   fputc(m0[i],gsm);
+   a=timed_getc();
+   }
+   a=timed_getc();
+   a=timed_getc();     
+for(i=0;i<10;i++)
+   {
+   fputc(m1[i],gsm);
+   a=timed_getc();
+   }
+   a=timed_getc();
+   a=timed_getc();
+for(i=0;i<21;i++)
+   {
+   fputc(m2[i],gsm);
+   a=timed_getc();
+   }
+   a=timed_getc();
+   a=timed_getc();
+for(i=0;str[i]!='\0';i++)
+   {
+   fputc(str[i],gsm);
+   a=timed_getc();
+   }
+   a=timed_getc();
+   a=timed_getc(); 
+   delay_ms(100);
+   fputc(0X1A,gsm);
+   a=timed_getc();
+   output_bit(PIN_a3,1);   
+   delay_ms(100);
+   output_bit(PIN_a3,0);
+ }
+//////////////////////////////////////////////////////////   receive      /////////////////////////////////////////////////////////
+void receive()
+   {
+   for(i=0;i<3;i++)
+   {
+   fputc(m0[i],gsm);
+   a=timed_getc();
+   }
+   a=timed_getc();
+   a=timed_getc();   
+for(i=0;i<10;i++)
+   {
+   fputc(m1[i],gsm);
+   a=timed_getc();
+   }
+   a=timed_getc();
+   a=timed_getc();
+output_bit(PIN_a4,1);   
+delay_ms(300);
+output_bit(PIN_a4,0);
+for(i=0;i<10;i++)
+   {
+   fputc(m3[i],gsm);
+   a=timed_getc();
+   }
+   a=timed_getc();
+   a=timed_getc();    
+while(a!='*')
+   {
+   a=timed_getc();   
+   }     
+for(i=0;str1[i-1]!='*';i++)
+   {
+   a=fgetc(gsm);
+   str[i]=a;
+   }
+str[i-1] = '\0';
+a=timed_getc();
+a=timed_getc();  
+for(i=0;i<10;i++)
+   {
+   fputc(m4[i],gsm);                         //delete memory of modem
+   a=timed_getc();
+   }
+   a=timed_getc();
+   a=timed_getc(); 
+output_bit(PIN_a5,1);   
+delay_ms(100);
+output_bit(PIN_a5,0);   
+   } 
+   void main()
+  {
+       while(1)
+        {
+        delay_ms(300);
+        while(!input(pin_A0));  
+        call();
+        msg(); 
+        output_high(PIN_A1);                   //LOCKING
+        receive();
+        if(strcmp(str1,str2) ==0)
+        output_low(PIN_A1);                    //UNLOCKING
+         reset_cpu();
+        }
+ }
+
